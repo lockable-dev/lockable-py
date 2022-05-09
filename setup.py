@@ -5,11 +5,11 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
 		name="lockable.dev",
-		version="0.0.1",
+		version="0.0.2",
 		author="Lockable",
 		author_email="dev@lockable.dev",
 		description="Official Python client for https://lockable.dev",
-		url="https://lockable.dev",
+		url="https://github.com/lockable-dev/lockable-py",
 		long_description=long_description,
 		long_description_content_type="text/markdown",
 		packages=setuptools.find_packages(),
