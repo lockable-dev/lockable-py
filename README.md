@@ -1,11 +1,17 @@
-Lockable-dev
+# Lockable-dev
+Official Python client for https://lockable.dev
+
+## Usage
+```
+import lockable
+```
 
 
-#Building and pushing changes
+## Building and pushing changes
 ```
 #Build
-python setup.py sdist bdist_wheel
+python -m build
 
 #Upload latest version to TestPyPi
-python -m twine upload — repository testpypi dist/*
+python -m twine upload --repository testpypi dist/*
 ```
