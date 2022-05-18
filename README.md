@@ -9,9 +9,9 @@ import lockable
 
 ## Building and pushing changes
 ```
-#Build
-python -m build
+# Just build
+make build
 
-#Upload latest version to TestPyPi
-python -m twine upload --repository testpypi dist/*
+#Build and upload latest version to TestPyPi
+make test-publish
 ```
