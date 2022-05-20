@@ -10,8 +10,8 @@ from . import client
 
 log = logging.getLogger(__name__)
 
-HEARTBEAT_SLEEP = dt.timedelta(milliseconds=1000)
-ACQUIRE_SLEEP = dt.timedelta(milliseconds=1000)
+DEFAULT_HEARTBEAT_SLEEP_PERIOD = dt.timedelta(milliseconds=1000)
+DEFAULT_ACQUIRE_SLEEP_PERIOD = dt.timedelta(milliseconds=1000)
 
 
 class Lock:
@@ -23,7 +23,6 @@ class Lock:
     ```
     """
 
-    # TODO: Handle cases where lockable.dev is down
     # TODO: make sleep periods configurable
     def __init__(
         self,
@@ -31,6 +30,7 @@ class Lock:
         blocking=True,
         on_lock_loss=lambda: None,
         on_heartbeat_exception=lambda e: None,
+        acquire_sleep_period=DEFAULT_ACQUIRE_SLEEP_PERIOD,
     ):
         self.lock_name = lock_name
         self._blocking = blocking
@@ -39,6 +39,7 @@ class Lock:
             on_lock_loss=on_lock_loss,
             on_heartbeat_exception=on_heartbeat_exception,
         )
+        self._acquire_sleep_period = acquire_sleep_period
 
     def _maybe_block_and_acquire(self):
         """
@@ -53,7 +54,7 @@ class Lock:
                 return
             if not self._blocking:
                 raise CouldNotAcquireLockError(self.lock_name)
-            time.sleep(ACQUIRE_SLEEP.total_seconds())
+            time.sleep(self.acquire_sleep_period.total_seconds())
 
     def acquire(self):
         self._maybe_block_and_acquire()
@@ -68,7 +69,6 @@ class Lock:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        # TODO: Handle errors
         self.release()
 
     def __repr__(self):
@@ -76,7 +76,7 @@ class Lock:
 
 
 class HeartBeatLoop:
-    def __init__(self, lock, on_lock_loss, on_heartbeat_exception):
+    def __init__(self, lock, on_lock_loss, on_heartbeat_exception, heartbeat_sleep_period=DEFAULT_HEARTBEAT_SLEEP_PERIOD):
         self._lock = lock
         #The hb thread will hold the _interrupt_lock whenever it is in a state
         # where it does not want to be interrupted
@@ -85,6 +85,7 @@ class HeartBeatLoop:
         self._interrupt_lock = threading.Lock()
         self._on_lock_loss = on_lock_loss
         self._on_heartbeat_exception = on_heartbeat_exception
+        self._heartbeat_sleep_period = heartbeat_sleep_period
 
     def start(self):
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -96,7 +97,7 @@ class HeartBeatLoop:
         log.debug('Shutting down heartbeat loop')
         #Only interrupt the loop if it is in an interruptable state
         with self._not_interruptable():
-          self._executor.shutdown(wait=False)
+          self._executor.shutdown()
         log.debug('Heartbeat loop shut down')
 
     def _run_heartbeat_loop(self):
@@ -107,7 +108,7 @@ class HeartBeatLoop:
 
         To avoid race conditions we use self._interruptable and self._not_interruptable
         to mark potions of the code where the loop can be interrupted by
-        self._executor.shutdown(wait=False)
+        self._executor.shutdown()
         """
         self._loop_error = None
         with self._not_interruptable():
@@ -121,7 +122,7 @@ class HeartBeatLoop:
                       self._on_lock_loss()
                       return
                   with self._interruptable():
-                      time.sleep(HEARTBEAT_SLEEP.total_seconds())
+                      time.sleep(self.heartbeat_sleep_period.total_seconds())
           except Exception as e:
               # Something went wrong
               # Use the exception callback to notify the main thread
