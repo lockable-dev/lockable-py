@@ -1,0 +1,2 @@
+class CouldNotAcquireLockError(Exception):
+    pass

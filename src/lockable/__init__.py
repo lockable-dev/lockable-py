@@ -1,2 +1,3 @@
 from . import client
-from .lockable import Lock
+from .lock import Lock
+from .exceptions import CouldNotAcquireLockError
