@@ -1,12 +1,12 @@
 import concurrent.futures
-from contextlib import contextmanager
-import threading
 import datetime as dt
 import logging
+import threading
 import time
-from .exceptions import CouldNotAcquireLockError
+from contextlib import contextmanager
 
 from . import client
+from .exceptions import CouldNotAcquireLockError
 
 log = logging.getLogger(__name__)
 
@@ -76,12 +76,19 @@ class Lock:
 
 
 class HeartBeatLoop:
-    def __init__(self, lock, on_lock_loss, on_heartbeat_exception, heartbeat_sleep_period=DEFAULT_HEARTBEAT_SLEEP_PERIOD):
+    def __init__(
+        self,
+        lock,
+        on_lock_loss,
+        on_heartbeat_exception,
+        heartbeat_sleep_period=DEFAULT_HEARTBEAT_SLEEP_PERIOD,
+    ):
         self._lock = lock
-        #The hb thread will hold the _interrupt_lock whenever it is in a state
+        # The hb thread will hold the _interrupt_lock whenever it is in a state
         # where it does not want to be interrupted
         # e.g. processing an exception callback
-        #Used via self._interruptable and self._not_interruptable context managers
+        # Used via self._interruptable and self._not_interruptable
+        # context managers
         self._interrupt_lock = threading.Lock()
         self._on_lock_loss = on_lock_loss
         self._on_heartbeat_exception = on_heartbeat_exception
@@ -94,11 +101,11 @@ class HeartBeatLoop:
         log.debug("Heartbeat loop started")
 
     def shutdown(self):
-        log.debug('Shutting down heartbeat loop')
-        #Only interrupt the loop if it is in an interruptable state
+        log.debug("Shutting down heartbeat loop")
+        # Only interrupt the loop if it is in an interruptable state
         with self._not_interruptable():
-          self._executor.shutdown()
-        log.debug('Heartbeat loop shut down')
+            self._executor.shutdown()
+        log.debug("Heartbeat loop shut down")
 
     def _run_heartbeat_loop(self):
         """
@@ -106,28 +113,28 @@ class HeartBeatLoop:
         Any threading issues can only appear by interleaving this code
         with the rest of the code running on the main thread.
 
-        To avoid race conditions we use self._interruptable and self._not_interruptable
-        to mark potions of the code where the loop can be interrupted by
-        self._executor.shutdown()
+        To avoid race conditions we use self._interruptable
+        and self._not_interruptable to mark potions of the code
+        where the loop can be interrupted by self._executor.shutdown()
         """
         self._loop_error = None
         with self._not_interruptable():
-          try:
-              while True:
-                  with self._interruptable() as f:
-                      heartbeat_response = client.try_heartbeat(self._lock.lock_name)
-                  if heartbeat_response is False:
-                      # We've lost the lock
-                      # Use the callback to notify the main thread
-                      self._on_lock_loss()
-                      return
-                  with self._interruptable():
-                      time.sleep(self.heartbeat_sleep_period.total_seconds())
-          except Exception as e:
-              # Something went wrong
-              # Use the exception callback to notify the main thread
-              self._on_heartbeat_exception(e)
-              self._loop_error = e
+            try:
+                while True:
+                    with self._interruptable():
+                        heartbeat_response = client.try_heartbeat(self._lock.lock_name)
+                    if heartbeat_response is False:
+                        # We've lost the lock
+                        # Use the callback to notify the main thread
+                        self._on_lock_loss()
+                        return
+                    with self._interruptable():
+                        time.sleep(self.heartbeat_sleep_period.total_seconds())
+            except Exception as e:
+                # Something went wrong
+                # Use the exception callback to notify the main thread
+                self._on_heartbeat_exception(e)
+                self._loop_error = e
 
     @contextmanager
     def _interruptable(self):

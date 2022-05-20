@@ -1,7 +1,6 @@
 import logging
 
 import requests as rq
-from requests.exceptions import HTTPError
 
 log = logging.getLogger(__name__)
 
