@@ -23,7 +23,6 @@ class Lock:
     ```
     """
 
-    # TODO: make sleep periods configurable
     def __init__(
         self,
         lock_name,
@@ -105,7 +104,6 @@ class HeartBeatLoop:
 
     def shutdown(self):
         log.debug("Shutting down heartbeat loop")
-        # Only interrupt the loop if it is in an interruptable state
         self._shutdown_requested = True
         self._executor.shutdown()
         self._shutdown_requested = False
