@@ -13,6 +13,9 @@ $(VENV_NAME)/bin/activate: setup.cfg
 build: venv
 	$(VENV_NAME)/bin/python -m build
 
+test: venv
+	@$(VENV_NAME)/bin/pytest -o log_cli=True -s
+
 test-publish: clean venv build
 	@$(VENV_NAME)/bin/python -m twine upload \
 		dist/* \
@@ -30,4 +33,4 @@ clean:
 	rm -rf $(VENV_NAME) dist/
 
 
-.PHONY: venv build test-publish lint clean
+.PHONY: venv build test test-publish lint clean

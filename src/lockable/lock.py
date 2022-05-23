@@ -31,6 +31,7 @@ class Lock:
         on_lock_loss=lambda: None,
         on_heartbeat_exception=lambda e: None,
         acquire_sleep_period=DEFAULT_ACQUIRE_SLEEP_PERIOD,
+        heartbeat_sleep_period=DEFAULT_HEARTBEAT_SLEEP_PERIOD,
     ):
         self.lock_name = lock_name
         self._blocking = blocking
@@ -38,6 +39,7 @@ class Lock:
             lock=self,
             on_lock_loss=on_lock_loss,
             on_heartbeat_exception=on_heartbeat_exception,
+            heartbeat_sleep_period=heartbeat_sleep_period,
         )
         self._acquire_sleep_period = acquire_sleep_period
 
@@ -54,7 +56,7 @@ class Lock:
                 return
             if not self._blocking:
                 raise CouldNotAcquireLockError(self.lock_name)
-            time.sleep(self.acquire_sleep_period.total_seconds())
+            time.sleep(self._acquire_sleep_period.total_seconds())
 
     def acquire(self):
         self._maybe_block_and_acquire()
@@ -81,7 +83,7 @@ class HeartBeatLoop:
         lock,
         on_lock_loss,
         on_heartbeat_exception,
-        heartbeat_sleep_period=DEFAULT_HEARTBEAT_SLEEP_PERIOD,
+        heartbeat_sleep_period,
     ):
         self._lock = lock
         # The hb thread will hold the _interrupt_lock whenever it is in a state
@@ -93,6 +95,7 @@ class HeartBeatLoop:
         self._on_lock_loss = on_lock_loss
         self._on_heartbeat_exception = on_heartbeat_exception
         self._heartbeat_sleep_period = heartbeat_sleep_period
+        self._shutdown_requested = False
 
     def start(self):
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -103,8 +106,9 @@ class HeartBeatLoop:
     def shutdown(self):
         log.debug("Shutting down heartbeat loop")
         # Only interrupt the loop if it is in an interruptable state
-        with self._not_interruptable():
-            self._executor.shutdown()
+        self._shutdown_requested = True
+        self._executor.shutdown()
+        self._shutdown_requested = False
         log.debug("Heartbeat loop shut down")
 
     def _run_heartbeat_loop(self):
@@ -118,32 +122,21 @@ class HeartBeatLoop:
         where the loop can be interrupted by self._executor.shutdown()
         """
         self._loop_error = None
-        with self._not_interruptable():
-            try:
-                while True:
-                    with self._interruptable():
-                        heartbeat_response = client.try_heartbeat(self._lock.lock_name)
-                    if heartbeat_response is False:
-                        # We've lost the lock
-                        # Use the callback to notify the main thread
-                        self._on_lock_loss()
-                        return
-                    with self._interruptable():
-                        time.sleep(self.heartbeat_sleep_period.total_seconds())
-            except Exception as e:
-                # Something went wrong
-                # Use the exception callback to notify the main thread
-                self._on_heartbeat_exception(e)
-                self._loop_error = e
-
-    @contextmanager
-    def _interruptable(self):
-        self._interrupt_lock.release()
-        yield
-        self._interrupt_lock.acquire()
-
-    @contextmanager
-    def _not_interruptable(self):
-        self._interrupt_lock.acquire()
-        yield
-        self._interrupt_lock.release()
+        try:
+            while not self._shutdown_requested:
+                heartbeat_response = client.try_heartbeat(self._lock.lock_name)
+                if heartbeat_response is False:
+                    # We've lost the lock
+                    # Use the callback to notify the main thread
+                    log.debug("Entering _on_lock_loss")
+                    self._on_lock_loss()
+                    log.debug("Leaving _on_lock_loss")
+                    return
+                time.sleep(self.heartbeat_sleep_period.total_seconds())
+        except Exception as e:
+            # Something went wrong
+            # Use the exception callback to notify the main thread
+            log.debug("Entering _on_heartbeat_exception")
+            self._on_heartbeat_exception(e)
+            log.debug("Leaving _on_heartbeat_exception")
+            self._loop_error = e
