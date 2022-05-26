@@ -24,6 +24,10 @@ Upon exiting the `with` block, the lock is released.
 
 > **_NOTE_**: when picking a lock name, please make sure the lock name is unique and has low collision probability. For example `acme-company-foo-system-parallel-batch-job` is a good name. `my-lock` is not.
 
+## Authentication
+If you are on the [paid plan](https://lockable.dev/pricing) you can authenticate to lockable via the private Auth Token you can find on your [account page](https://13.40.244.228/account). Once authenticated, you can make use of private lock namespaces and flexible, long duration lock leases.
+
+The Python client will automatically pick up the Auth Token from the environment variable `LOCKABLE_AUTH_TOKEN` and all requests will be made as an authenticated user.
 
 ## How it works
 The core idea is that `lockable` provides a global server which keeps track of whether a lock has been acquired or not. All processes using `lockable` synchronize using the same server.

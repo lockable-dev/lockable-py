@@ -1,10 +1,24 @@
-from lockable import Lock
+import concurrent.futures
+import datetime as dt
+import logging
+import random
 import time
 import uuid
-import random
-import datetime as dt
-import concurrent.futures
-import logging
+
+from lockable import Lock
+
+
+def test_load_one(caplog):
+    caplog.set_level(logging.DEBUG, logger='lockable.lock')
+    caplog.set_level(logging.DEBUG, logger='lockable.client')
+    caplog.set_level(logging.DEBUG, logger=__name__)
+
+    with Lock(
+            lock_name=uuid.uuid4(),
+            heartbeat_sleep_period=dt.timedelta(milliseconds=100),
+            acquire_sleep_period=dt.timedelta(milliseconds=100)
+            ):
+        time.sleep(dt.timedelta(milliseconds=500).total_seconds())
 
 
 def test_load(caplog):
@@ -17,7 +31,7 @@ def test_load(caplog):
     max_delay_ms = 1000
     min_duration_ms = 0
     max_duration_ms = 1500
-    N = 1000
+    N = 400
     M = 4
 
     lock_names = [uuid.uuid4() for _ in range(M)]
@@ -35,10 +49,9 @@ def test_load(caplog):
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=N)
     tasks = []
     for process in processes:
-      future = executor.submit(process.run)
-      tasks.append((process, future))
+        future = executor.submit(process.run)
+        tasks.append((process, future))
     assert all(_[1].result() is None for _ in tasks)
-
 
 
 class Process:

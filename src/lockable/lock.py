@@ -3,9 +3,9 @@ import datetime as dt
 import logging
 import threading
 import time
-from contextlib import contextmanager
 
 from . import client
+from .config import get_auth_token
 from .exceptions import CouldNotAcquireLockError
 
 log = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class Lock:
         If self._blocking is False, raise CouldNotAcquireLockError
         """
         while True:
-            acquire_response = client.try_acquire(self.lock_name)
+            acquire_response = client.try_acquire(self.lock_name, auth_token=get_auth_token())
             if acquire_response:
                 return
             if not self._blocking:
@@ -62,7 +62,7 @@ class Lock:
         self._heartbeat_loop.start()
 
     def release(self):
-        client.try_release(self.lock_name)
+        client.try_release(self.lock_name, auth_token=get_auth_token())
         self._heartbeat_loop.shutdown()
 
     def __enter__(self):
@@ -122,7 +122,7 @@ class HeartBeatLoop:
         self._loop_error = None
         try:
             while not self._shutdown_requested:
-                heartbeat_response = client.try_heartbeat(self._lock.lock_name)
+                heartbeat_response = client.try_heartbeat(self._lock.lock_name, auth_token=get_auth_token())
                 if heartbeat_response is False:
                     # We've lost the lock
                     # Use the callback to notify the main thread
