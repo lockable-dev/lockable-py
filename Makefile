@@ -6,7 +6,7 @@ venv: $(VENV_NAME)/bin/activate
 
 $(VENV_NAME)/bin/activate: setup.cfg
 	virtualenv --python "$(which $(PYTHON))" --clear $(VENV_NAME)
-	$(VENV_NAME)/bin/pip install pip==22.1
+	$(VENV_NAME)/bin/pip install pip==22.1.1
 	$(VENV_NAME)/bin/pip install -r requirements-dev.txt
 	$(VENV_NAME)/bin/pip install -e .
 
