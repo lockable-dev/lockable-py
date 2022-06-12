@@ -6,6 +6,7 @@ Lockable is an easy-to-use, language-independent locking mechanism for multi-pro
 ## Learn more
 
 * Lockable website: https://lockable.dev
+* Lockable Python client on GitHub: https://github.com/lockable-dev/lockable-py
 * Docs: https://docs.lockable.dev
 * Docs on GitHub: https://github.com/lockable-dev/lockable-docs
 
