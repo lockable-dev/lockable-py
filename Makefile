@@ -1,12 +1,17 @@
 VENV_NAME?=venv
 PYTHON?=python3.7
+#Expected to hold
+# TEST_PIPY_USERNAME
+# TEST_PIPY_PASSWORD
+# PIPY_USERNAME
+# PIPY_PASSWORD
 include .env.local
 
 venv: $(VENV_NAME)/bin/activate
 
 $(VENV_NAME)/bin/activate: setup.cfg
 	virtualenv --python "$(which $(PYTHON))" --clear $(VENV_NAME)
-	$(VENV_NAME)/bin/pip install pip==22.1.1
+	$(VENV_NAME)/bin/pip install pip==22.1.2
 	$(VENV_NAME)/bin/pip install -r requirements-dev.txt
 	$(VENV_NAME)/bin/pip install -e .
 
@@ -22,6 +27,14 @@ test-publish: clean venv build
 		--repository testpypi \
 		-u $(TEST_PIPY_USERNAME) \
 		-p $(TEST_PIPY_PASSWORD) \
+		--verbose
+
+publish: clean venv build
+	@$(VENV_NAME)/bin/python -m twine upload \
+		dist/* \
+		--repository pypi \
+		-u $(PIPY_USERNAME) \
+		-p $(PIPY_PASSWORD) \
 		--verbose
 
 lint: venv
