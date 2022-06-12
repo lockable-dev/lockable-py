@@ -35,4 +35,7 @@ make build
 
 #Build and upload latest version to TestPyPi
 make test-publish
+
+#Build and upload latest version to TestPyPi
+make publish
 ```
